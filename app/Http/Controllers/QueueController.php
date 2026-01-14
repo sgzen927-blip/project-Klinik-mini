@@ -17,7 +17,13 @@ class QueueController extends Controller
 
     public function index()
     {
-        $queues = Queue::where('user_id', Auth::id())->with('doctor')->get();
+        // Menampilkan riwayat milik user yang login
+        $queues = Queue::where('user_id', Auth::id())
+            ->with('doctor')
+            ->orderBy('visit_date', 'desc')
+            ->orderBy('queue_number', 'asc')
+            ->get();
+            
         return view('queue.index', compact('queues'));
     }
 
@@ -25,13 +31,15 @@ class QueueController extends Controller
     {
         // 1. Validasi Input
         $request->validate([
-            'doctor_id' => 'required|exists:doctors,id',
-            'visit_date' => 'required|date|after_or_equal:today',
-            'complaint' => 'required|string|min:10',
+            'patient_name' => 'required|string|max:255',
+            'doctor_id'    => 'required|exists:doctors,id',
+            'visit_date'   => 'required|date|after_or_equal:today',
+            'complaint'    => 'required|string|min:10',
         ]);
 
-        // 2. SOLUSI ERROR image_801109.png: Cek apakah user sudah daftar
-        $exists = Queue::where('user_id', Auth::id())
+        // 2. Cek apakah NAMA PASIEN ini sudah terdaftar di dokter & tanggal yang sama
+        // Hal ini untuk mencegah double input yang tidak sengaja (klik tombol 2x)
+        $exists = Queue::where('patient_name', $request->patient_name)
             ->where('doctor_id', $request->doctor_id)
             ->where('visit_date', $request->visit_date)
             ->exists();
@@ -39,26 +47,28 @@ class QueueController extends Controller
         if ($exists) {
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['doctor_id' => 'Anda sudah terdaftar di dokter ini pada tanggal tersebut.']);
+                ->withErrors(['patient_name' => 'Pasien ini sudah terdaftar pada dokter dan tanggal yang dipilih.']);
         }
 
-        // 3. Hitung nomor antrian selanjutnya
+        // 3. Logika Nomor Antrean Otomatis Berurutan (Per Dokter & Per Tanggal)
         $lastQueue = Queue::where('doctor_id', $request->doctor_id)
             ->where('visit_date', $request->visit_date)
             ->max('queue_number');
 
         $newNumber = ($lastQueue ?? 0) + 1;
 
-        // 4. Simpan data
+        // 4. Eksekusi Simpan
         Queue::create([
-            'user_id' => Auth::id(),
-            'doctor_id' => $request->doctor_id,
+            'user_id'      => Auth::id(),
+            'patient_name' => $request->patient_name,
+            'doctor_id'    => $request->doctor_id,
             'queue_number' => $newNumber,
-            'visit_date' => $request->visit_date,
-            'complaint' => $request->complaint,
-            'status' => 'WAITING',
+            'visit_date'   => $request->visit_date,
+            'complaint'    => $request->complaint,
+            'status'       => 'WAITING',
         ]);
 
-        return redirect()->route('queue.index')->with('success', 'Pendaftaran berhasil! Nomor antrian Anda: #' . $newNumber);
+        return redirect()->route('queue.index')
+            ->with('success', "Pendaftaran berhasil! Pasien: {$request->patient_name} mendapat No. Antrean: #{$newNumber}");
     }
 }

@@ -12,7 +12,8 @@ class AdminQueueController extends Controller
      */
     public function dashboard()
     {
-        // Mengambil antrian khusus hari ini agar dashboard tetap rapi
+        // Mengambil antrian khusus hari ini.
+        // Diurutkan berdasarkan queue_number agar konsisten di admin dan user.
         $queues = Queue::with(['user', 'doctor'])
             ->whereDate('visit_date', date('Y-m-d')) 
             ->orderBy('queue_number', 'asc')
@@ -26,7 +27,6 @@ class AdminQueueController extends Controller
      */
     public function callNext($doctorId)
     {
-        // Mencari antrian pertama yang masih 'WAITING' untuk dokter tersebut hari ini
         $nextQueue = Queue::where('doctor_id', $doctorId)
             ->whereDate('visit_date', date('Y-m-d'))
             ->where('status', 'WAITING')
@@ -42,20 +42,36 @@ class AdminQueueController extends Controller
     }
 
     /**
-     * Mengupdate status antrian secara spesifik (digunakan oleh form PATCH).
+     * Mengupdate status antrian secara spesifik.
+     * Mendukung status: WAITING, CALLED, DONE, CANCELLED.
      */
     public function updateStatus(Request $request, Queue $queue)
     {
-        // Validasi input status agar hanya menerima nilai yang diizinkan
+        // Validasi input status
         $request->validate([
-            'status' => 'required|in:WAITING,CALLED,CANCELLED'
+            'status' => 'required|in:WAITING,CALLED,DONE,CANCELLED'
         ]);
 
         $queue->update([
             'status' => $request->status
         ]);
 
-        $pesan = $request->status == 'CALLED' ? 'Pasien dipanggil.' : 'Status diperbarui.';
+        // Penentuan pesan notifikasi berdasarkan status baru
+        switch ($request->status) {
+            case 'CALLED':
+                $pesan = 'Pasien #' . $queue->queue_number . ' sedang dipanggil.';
+                break;
+            case 'DONE':
+                $pesan = 'Pasien #' . $queue->queue_number . ' telah selesai diperiksa.';
+                break;
+            case 'CANCELLED':
+                $pesan = 'Antrian #' . $queue->queue_number . ' telah dibatalkan.';
+                break;
+            default:
+                $pesan = 'Status antrian #' . $queue->queue_number . ' berhasil diperbarui.';
+                break;
+        }
+
         return back()->with('success', $pesan);
     }
 }

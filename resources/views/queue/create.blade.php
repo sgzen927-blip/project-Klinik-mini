@@ -8,7 +8,7 @@
                 <div class="card-header bg-success text-white font-weight-bold">Formulir Pendaftaran Antrian</div>
 
                 <div class="card-body">
-                    {{-- 1. Tambahan: Menampilkan Pesan Error jika terjadi duplikasi atau kuota penuh --}}
+                    {{-- Menampilkan Pesan Error jika terjadi duplikasi atau kesalahan validasi --}}
                     @if ($errors->any())
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <strong>Gagal Mendaftar:</strong>
@@ -23,6 +23,17 @@
 
                     <form method="POST" action="{{ route('queue.store') }}">
                         @csrf
+
+                        {{-- PERBAIKAN: Input Nama Pasien Manual --}}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nama Pasien</label>
+                            <input type="text" name="patient_name" 
+                                   class="form-control @error('patient_name') is-invalid @enderror" 
+                                   placeholder="Masukkan nama lengkap pasien..." 
+                                   value="{{ old('patient_name') }}" required autofocus>
+                            <div class="form-text text-muted">Contoh: Budi Santoso</div>
+                            @error('patient_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Pilih Dokter</label>
@@ -39,7 +50,6 @@
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Tanggal Kunjungan</label>
-                            {{-- Gunakan old('visit_date') agar tanggal tidak reset jika form error --}}
                             <input type="date" name="visit_date" class="form-control @error('visit_date') is-invalid @enderror" 
                                    value="{{ old('visit_date', date('Y-m-d')) }}" required>
                             @error('visit_date') <div class="invalid-feedback">{{ $message }}</div> @enderror

@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Queue extends Model
 {
-    protected $fillable = [
-        'user_id', 'doctor_id', 'visit_date', 
-        'queue_number', 'complaint', 'status'
-    ]; // [cite: 53, 54, 56, 57, 61]
+ protected $fillable = 
+ ['user_id', 'doctor_id', 'patient_name', 
+ 'queue_number', 'visit_date', 'complaint', 'status'];
+  // [cite: 53, 54, 56, 57, 61]
 
     // Relasi: Antrian ini dimiliki oleh satu User (Pasien) [cite: 7]
     public function user()
